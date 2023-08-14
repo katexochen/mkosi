@@ -348,7 +348,7 @@ def finalize_passwd_mounts(root: Path) -> list[PathString]:
         if p.exists():
             options += ["--bind", p, f"/etc/{f}"]
         else:
-            options += ["--bind", "/dev/null", f"/etc/{f}"]
+            options += ["--try-bind", "/dev/null", f"/etc/{f}"]
 
     return options
 
