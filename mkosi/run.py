@@ -347,8 +347,6 @@ def finalize_passwd_mounts(root: Path) -> list[PathString]:
         p = root / "etc" / f
         if p.exists():
             options += ["--bind", p, f"/etc/{f}"]
-        else:
-            options += ["--bind-try", "/dev/null", f"/etc/{f}"]
 
     return options
 
@@ -360,11 +358,16 @@ def apivfs_cmd(root: Path) -> list[PathString]:
         "--chdir", Path.cwd(),
         "--tmpfs", root / "run",
         "--tmpfs", root / "tmp",
+        "--tmpfs", "/etc",
         "--bind", os.getenv("TMPDIR", "/var/tmp"), root / "var/tmp",
         "--proc", root / "proc",
         "--dev", root / "dev",
         "--ro-bind", "/sys", root / "sys",
     ]
+
+    for f in os.listdir("/etc"):
+        if f in ("passwd", "group", "shadow", "gshadow"):
+            cmdline += ["--bind", "/etc/" + f, "/etc/" + f]
 
     if (root / "etc/machine-id").exists():
         # Make sure /etc/machine-id is not overwritten by any package manager post install scripts.
