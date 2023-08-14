@@ -366,7 +366,7 @@ def apivfs_cmd(root: Path) -> list[PathString]:
     ]
 
     for f in os.listdir("/etc"):
-        if f in ("passwd", "group", "shadow", "gshadow"):
+        if f not in ("passwd", "group", "shadow", "gshadow"):
             cmdline += ["--bind", "/etc/" + f, "/etc/" + f]
 
     if (root / "etc/machine-id").exists():
