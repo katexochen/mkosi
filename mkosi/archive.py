@@ -6,7 +6,7 @@ from collections.abc import Iterable
 from pathlib import Path
 from typing import Optional
 
-from mkosi.log import log_step
+from mkosi.log import complete_step, die, log_step
 from mkosi.run import bwrap, finalize_passwd_mounts
 
 
@@ -82,7 +82,7 @@ def extract_tar(src: Path, dst: Path, log: bool = True) -> None:
     )
 
 
-def make_cpio(src: Path, dst: Path, files: Optional[Iterable[Path]] = None) -> None:
+def make_cpio(src: Path, dst: Path,files: Optional[Iterable[Path]] = None) -> None:
     if not files:
         files = src.rglob("*")
 
@@ -102,3 +102,19 @@ def make_cpio(src: Path, dst: Path, files: Optional[Iterable[Path]] = None) -> N
         # Make sure tar uses user/group information from the root directory instead of the host.
         options=finalize_passwd_mounts(dst),
     )
+
+
+def normalize_mtime(root: Path, source_date_epoch: Optional[str]) -> None:
+    if source_date_epoch is None:
+        return
+
+    try:
+        mtime_epoch = int(source_date_epoch)
+    except ValueError:
+        die(f"SOURCE_DATE_EPOCH={source_date_epoch} is not a valid integer")
+    if mtime_epoch < 0:
+        die(f"SOURCE_DATE_EPOCH={source_date_epoch} is negative")
+
+    with complete_step("Setting mtime to SOURCE_DATE_EPOCH"):
+        for p in root.rglob("*"):
+            os.utime(p, (mtime_epoch, mtime_epoch), follow_symlinks=False)

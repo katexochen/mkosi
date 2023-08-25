@@ -21,7 +21,7 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any, ContextManager, Mapping, Optional, TextIO, Union
 
-from mkosi.archive import extract_tar, make_cpio, make_tar
+from mkosi.archive import extract_tar, make_cpio, make_tar, normalize_mtime
 from mkosi.config import (
     BiosBootloader,
     Bootloader,
@@ -934,6 +934,8 @@ def build_initrd(state: MkosiState) -> Path:
         "--make-initrd", "yes",
         "--bootable", "no",
         "--manifest-format", "",
+        *([f"--environment=SOURCE_DATE_EPOCH={state.config.environment['SOURCE_DATE_EPOCH']}"]
+            if "SOURCE_DATE_EPOCH" in state.config.environment else []),
         *(["--locale", state.config.locale] if state.config.locale else []),
         *(["--locale-messages", state.config.locale_messages] if state.config.locale_messages else []),
         *(["--keymap", state.config.keymap] if state.config.keymap else []),
@@ -960,6 +962,7 @@ def build_kernel_modules_initrd(state: MkosiState, kver: str) -> Path:
     if kmods.exists():
         return kmods
 
+    normalize_mtime(state.root, state.config.environment.get("SOURCE_DATE_EPOCH"))
     make_cpio(
         state.root, kmods,
         gen_required_kernel_modules(
@@ -1624,6 +1627,8 @@ def make_image(state: MkosiState, skip: Sequence[str] = [], split: bool = False)
     if not state.config.output_format == OutputFormat.disk:
         return []
 
+    normalize_mtime(state.root, state.config.environment.get("SOURCE_DATE_EPOCH"))
+
     cmdline: list[PathString] = [
         "systemd-repart",
         "--empty=allow",
@@ -1821,6 +1826,7 @@ def build_image(args: MkosiArgs, config: MkosiConfig) -> None:
         install_grub_bios(state, partitions)
         make_image(state, split=True)
 
+        normalize_mtime(state.root,  state.config.environment.get("SOURCE_DATE_EPOCH"))
         if state.config.output_format == OutputFormat.tar:
             make_tar(state.root, state.staging / state.config.output_with_format)
         elif state.config.output_format == OutputFormat.cpio:
