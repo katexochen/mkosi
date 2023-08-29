@@ -21,7 +21,7 @@ from collections.abc import Iterator, Sequence
 from pathlib import Path
 from typing import Any, ContextManager, Mapping, Optional, TextIO, Union
 
-from mkosi.archive import extract_tar, make_cpio, make_tar, normalize_mtime
+from mkosi.archive import extract_tar, make_cpio, make_tar
 from mkosi.config import (
     BiosBootloader,
     Bootloader,
@@ -661,6 +661,7 @@ def prepare_grub_config(state: MkosiState) -> Optional[Path]:
     if not config.exists():
         with umask(~0o600), config.open("w") as f:
             f.write("set timeout=0\n")
+            normalize_mtime_path(state.root, config, state.source_date_epoch)
 
     # Signed EFI grub shipped by distributions reads its configuration from /EFI/<distribution>/grub.cfg in
     # the ESP so let's put a shim there to redirect to the actual configuration file.
@@ -670,6 +671,7 @@ def prepare_grub_config(state: MkosiState) -> Optional[Path]:
 
     # Read the actual config file from the root of the ESP.
     efi.write_text(f"configfile /{prefix}/grub.cfg\n")
+    normalize_mtime_path(state.root, efi, state.source_date_epoch)
 
     return config
 
@@ -720,6 +722,7 @@ def prepare_grub_bios(state: MkosiState, partitions: Sequence[Partition]) -> Non
         dst.mkdir(exist_ok=True)
 
     initrd = Path(shutil.copy2(initrd, dst / "initrd"))
+    normalize_mtime_path(state.root, initrd, state.source_date_epoch)
 
     with config.open("a") as f:
         f.write('if [ "${grub_platform}" == "pc" ]; then\n')
@@ -733,7 +736,9 @@ def prepare_grub_bios(state: MkosiState, partitions: Sequence[Partition]) -> Non
 
             with umask(~0o600):
                 kimg = Path(shutil.copy2(state.root / kimg, kdst / "vmlinuz"))
+                normalize_mtime_path(state.root, kdst / "vmlinuz", state.source_date_epoch)
                 kmods = Path(shutil.copy2(kmods, kdst / "kmods"))
+                normalize_mtime_path(state.root, kdst / "kmods", state.source_date_epoch)
 
                 f.write(
                     textwrap.dedent(
@@ -747,6 +752,7 @@ def prepare_grub_bios(state: MkosiState, partitions: Sequence[Partition]) -> Non
                 )
 
         f.write('fi\n')
+    normalize_mtime_path(state.root, config, state.source_date_epoch)
 
     # grub-install insists on opening the root partition device to probe it's filesystem which requires root
     # so we're forced to reimplement its functionality. Luckily that's pretty simple, run grub-mkimage to
@@ -765,6 +771,7 @@ def prepare_grub_bios(state: MkosiState, partitions: Sequence[Partition]) -> Non
 
     dst = state.root / "efi" / prefix / "i386-pc"
     dst.mkdir(parents=True, exist_ok=True)
+    normalize_mtime_path(state.root, dst, state.source_date_epoch)
 
     bwrap([mkimage,
            "--directory", directory,
@@ -791,14 +798,17 @@ def prepare_grub_bios(state: MkosiState, partitions: Sequence[Partition]) -> Non
 
     shutil.copy2(directory / "modinfo.sh", dst)
     shutil.copy2(directory / "boot.img", dst)
+    normalize_mtime(dst, state.source_date_epoch)
 
     dst = state.root / "efi" / prefix / "fonts"
     dst.mkdir()
+    normalize_mtime_path(state.root, dst, state.source_date_epoch)
 
     for prefix in ("grub", "grub2"):
         unicode = state.root / "usr/share" / prefix / "unicode.pf2"
         if unicode.exists():
             shutil.copy2(unicode, dst)
+            normalize_mtime(dst, state.source_date_epoch)
 
 
 def install_grub_bios(state: MkosiState, partitions: Sequence[Partition]) -> None:
@@ -962,7 +972,6 @@ def build_kernel_modules_initrd(state: MkosiState, kver: str) -> Path:
     if kmods.exists():
         return kmods
 
-    normalize_mtime(state.root, state.config.environment.get("SOURCE_DATE_EPOCH"))
     make_cpio(
         state.root, kmods,
         gen_required_kernel_modules(
@@ -1126,6 +1135,7 @@ def install_unified_kernel(state: MkosiState, partitions: Sequence[Partition]) -
                 boot_binary.parent.mkdir(parents=True, exist_ok=True)
 
             run(cmd)
+            normalize_mtime_path(state.root, boot_binary, state.source_date_epoch)
 
             if not (state.staging / state.config.output_split_uki).exists():
                 shutil.copy(boot_binary, state.staging / state.config.output_split_uki)
@@ -1153,6 +1163,7 @@ def install_unified_kernel(state: MkosiState, partitions: Sequence[Partition]) -
                 python = "python3" if state.config.tools_tree else os.getenv("MKOSI_INTERPRETER", "python3")
 
                 run([python], input=pefile)
+                normalize_mtime_path(state.root, state.root / state.config.output_split_kernel, state.source_date_epoch)
 
             print_output_size(boot_binary)
 
@@ -1627,8 +1638,6 @@ def make_image(state: MkosiState, skip: Sequence[str] = [], split: bool = False)
     if not state.config.output_format == OutputFormat.disk:
         return []
 
-    normalize_mtime(state.root, state.config.environment.get("SOURCE_DATE_EPOCH"))
-
     cmdline: list[PathString] = [
         "systemd-repart",
         "--empty=allow",
@@ -1818,6 +1827,7 @@ def build_image(args: MkosiArgs, config: MkosiConfig) -> None:
             run_selinux_relabel(state)
             run_finalize_script(state)
 
+        normalize_mtime(state.root, state.source_date_epoch)
         partitions = make_image(state, skip=("esp", "xbootldr"))
         install_unified_kernel(state, partitions)
         prepare_grub_efi(state)
@@ -1826,7 +1836,6 @@ def build_image(args: MkosiArgs, config: MkosiConfig) -> None:
         install_grub_bios(state, partitions)
         make_image(state, split=True)
 
-        normalize_mtime(state.root,  state.config.environment.get("SOURCE_DATE_EPOCH"))
         if state.config.output_format == OutputFormat.tar:
             make_tar(state.root, state.staging / state.config.output_with_format)
         elif state.config.output_format == OutputFormat.cpio:
@@ -2261,3 +2270,24 @@ def run_verb(args: MkosiArgs, presets: Sequence[MkosiConfig]) -> None:
 
             if args.verb == Verb.serve:
                 run_serve(last)
+
+
+def normalize_mtime(root: Path, source_date_epoch: Optional[int]) -> None:
+    if source_date_epoch is None:
+        return
+    with complete_step("Setting mtime to SOURCE_DATE_EPOCH"):
+        os.utime(root, (source_date_epoch, source_date_epoch), follow_symlinks=False)
+        for p in root.rglob("*"):
+            os.utime(p, (source_date_epoch, source_date_epoch), follow_symlinks=False)
+
+
+def normalize_mtime_path(root: Path, target: Path, source_date_epoch: Optional[int]) -> None:
+    if source_date_epoch is None:
+        return
+    assert root in target.parents
+    with complete_step(f"Setting mtime to SOURCE_DATE_EPOCH for {root}"):
+        os.utime(target, (source_date_epoch, source_date_epoch), follow_symlinks=False)
+        for p in target.parents:
+            os.utime(p, (source_date_epoch, source_date_epoch), follow_symlinks=False)
+            if p == root:
+                break
