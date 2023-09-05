@@ -20,11 +20,8 @@ class Repo(NamedTuple):
     enabled: bool = True
 
 
-def dnf_executable(state: MkosiState) -> str:
-    # dnf5 does not support building for foreign architectures yet (missing --forcearch)
-    dnf = shutil.which("dnf5") if state.config.architecture.is_native() else None
-    dnf = dnf or shutil.which("dnf") or "yum"
-    return dnf
+def dnf_executable() -> str:
+    return shutil.which("dnf5") or shutil.which("dnf") or "yum"
 
 
 def setup_dnf(state: MkosiState, repos: Sequence[Repo], filelists: bool = True) -> None:
@@ -48,7 +45,7 @@ def setup_dnf(state: MkosiState, repos: Sequence[Repo], filelists: bool = True) 
 
             # Make sure we download filelists so all dependencies can be resolved.
             # See https://bugzilla.redhat.com/show_bug.cgi?id=2180842
-            if dnf_executable(state).endswith("dnf5") and filelists:
+            if dnf_executable().endswith("dnf5") and filelists:
                 f.write("optional_metadata_types=filelists\n")
 
     repofile = state.pkgmngr / "etc/yum.repos.d/mkosi.repo"
@@ -74,7 +71,7 @@ def setup_dnf(state: MkosiState, repos: Sequence[Repo], filelists: bool = True) 
 
 
 def dnf_cmd(state: MkosiState) -> list[PathString]:
-    dnf = dnf_executable(state)
+    dnf = dnf_executable()
 
     cmdline: list[PathString] = [
         dnf,
