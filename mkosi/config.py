@@ -280,7 +280,10 @@ def config_default_compression(namespace: argparse.Namespace) -> Compression:
         return Compression.none
 
 
-def config_default_release(namespace: argparse.Namespace) -> str:
+def config_default_release(namespace: argparse.Namespace) -> Optional[str]:
+    if not namespace.distribution:
+        return None
+
     # If the configured distribution matches the host distribution, use the same release as the host.
     hd, hr = detect_distribution()
     if namespace.distribution == hd and hr is not None:
