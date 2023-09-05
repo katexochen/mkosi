@@ -280,6 +280,11 @@ def config_default_compression(namespace: argparse.Namespace) -> Compression:
         return Compression.none
 
 
+def config_default_distribution(namespace: argparse.Namespace) -> Distribution:
+    detected = detect_distribution()[0]
+    return detected or Distribution.fedora
+
+
 def config_default_release(namespace: argparse.Namespace) -> Optional[str]:
     if not namespace.distribution:
         return None
@@ -879,7 +884,7 @@ SETTINGS = (
         section="Distribution",
         parse=config_make_enum_parser(Distribution),
         match=config_make_enum_matcher(Distribution),
-        default=detect_distribution()[0],
+        default_factory=config_default_distribution,
         choices=Distribution.values(),
         help="Distribution to install",
     ),
