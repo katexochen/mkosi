@@ -2218,6 +2218,9 @@ def load_config(args: argparse.Namespace) -> MkosiConfig:
     args.kernel_command_line_extra = load_kernel_command_line_extra(args)
     args.environment = load_environment(args)
 
+    if not args.distribution:
+        die("Distribution of your host can't be detected or isn't a supported target. Please set Distribution= in your config.")
+
     if args.secure_boot and args.verb != Verb.genkey:
         if args.secure_boot_key is None and args.secure_boot_certificate is None:
             die("UEFI SecureBoot enabled, but couldn't find the certificate and private key.",
