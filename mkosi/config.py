@@ -292,6 +292,15 @@ def config_default_compression(namespace: argparse.Namespace) -> Compression:
         return Compression.none
 
 
+def config_default_distribution(namespace: argparse.Namespace) -> Distribution:
+    detected = detect_distribution()[0]
+
+    if not detected:
+        die("Distribution of your host can't be detected or isn't a supported target. Please set Distribution= in your config.")
+
+    return detected
+
+
 def config_default_release(namespace: argparse.Namespace) -> str:
     # If the configured distribution matches the host distribution, use the same release as the host.
     hd, hr = detect_distribution()
@@ -896,7 +905,7 @@ SETTINGS = (
         section="Distribution",
         parse=config_make_enum_parser(Distribution),
         match=config_make_enum_matcher(Distribution),
-        default=detect_distribution()[0],
+        default_factory=config_default_distribution,
         choices=Distribution.values(),
         help="Distribution to install",
     ),
@@ -2217,9 +2226,6 @@ def load_config(args: argparse.Namespace) -> MkosiConfig:
     args.credentials = load_credentials(args)
     args.kernel_command_line_extra = load_kernel_command_line_extra(args)
     args.environment = load_environment(args)
-
-    if not args.distribution:
-        die("Distribution of your host can't be detected or isn't a supported target. Please set Distribution= in your config.")
 
     if args.secure_boot and args.verb != Verb.genkey:
         if args.secure_boot_key is None and args.secure_boot_certificate is None:

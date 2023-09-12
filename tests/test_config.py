@@ -498,7 +498,7 @@ def test_package_manager_tree(tmp_path: Path, skel: Optional[Path], pkgmngr: Opt
         config = Path("mkosi.conf")
         with config.open("w") as f:
             f.write(
-                """\
+                """
                 [Distribution]
                 Distribution=fedora
 
@@ -506,12 +506,12 @@ def test_package_manager_tree(tmp_path: Path, skel: Optional[Path], pkgmngr: Opt
                 """
             )
             if skel is not None:
-                f.write(f"""\
+                f.write(f"""
                 SkeletonTrees={skel}
                 """
             )
             if pkgmngr is not None:
-                f.write(f"""\
+                f.write(f"""
                 PackageManagerTrees={pkgmngr}
                 """
             )
