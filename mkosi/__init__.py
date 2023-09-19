@@ -762,7 +762,10 @@ def prepare_grub_bios(state: MkosiState, partitions: Sequence[Partition]) -> Non
            "fat",
            "part_gpt",
            "biosdisk"],
-          options=["--bind", state.root / "usr", "/usr"])
+          options=[
+            "--bind", state.root / "usr", "/usr",
+            "--bind", state.root / "lib64", "/lib64"
+            ])
 
     for p in directory.glob("*.mod"):
         shutil.copy2(p, dst)
