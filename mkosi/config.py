@@ -5950,7 +5950,7 @@ def json_type_transformer(refcls: Union[type[Args], type[Config]]) -> Callable[[
         return typing.get_args(fieldtype)[0](enumval) if enumval is not None else None
 
     def enum_list_transformer(enumlist: list[str], fieldtype: type[list[E]]) -> list[E]:
-        enumtype = fieldtype.__args__[0]  # type: ignore
+        enumtype = typing.get_args(fieldtype)[0]
         return [enumtype(e) for e in enumlist]
 
     def config_drive_transformer(drives: list[dict[str, Any]], fieldtype: type[Drive]) -> list[Drive]:
