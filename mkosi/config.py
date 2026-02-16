@@ -1903,6 +1903,7 @@ class Args:
     def from_json(cls, s: Union[str, dict[str, Any], SupportsRead[str], SupportsRead[bytes]]) -> "Args":
         """Instantiate a Args object from a (partial) JSON dump."""
 
+        j: dict[str, Any]
         if isinstance(s, str):
             j = json.loads(s)
         elif isinstance(s, dict):
@@ -2477,6 +2478,8 @@ class Config:
         s: Union[str, dict[str, Any], SupportsRead[str], SupportsRead[bytes]],
     ) -> dict[str, Any]:
         """Instantiate a Config object from a (partial) JSON dump."""
+
+        j: dict[str, Any]
         if isinstance(s, str):
             j = json.loads(s)
         elif isinstance(s, dict):
