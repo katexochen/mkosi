@@ -1200,7 +1200,7 @@ def package_sort_key(package: str) -> tuple[int, str]:
 def config_make_list_parser(
     *,
     delimiter: Optional[str] = None,
-    parse: Callable[[str], T] = str,  # type: ignore # see mypy#3737
+    parse: Callable[[str], T] = str,  # type: ignore  # needed by mypy, see mypy#3737
     unescape: bool = False,
     reset: bool = True,
     key: Optional[Callable[[T], Any]] = None,
@@ -1722,7 +1722,7 @@ class SettingScope(StrEnum):
 class ConfigSetting(Generic[T]):
     dest: str
     section: str
-    parse: ConfigParseCallback[T] = config_parse_string  # type: ignore # see mypy#3737
+    parse: ConfigParseCallback[T] = config_parse_string  # type: ignore  # needed by mypy, see mypy#3737
     match: Optional[ConfigMatchCallback[T]] = None
     name: str = ""
     default: Optional[T] = None
@@ -4608,7 +4608,7 @@ def create_argument_parser(chdir: bool = True) -> argparse.ArgumentParser:
             last_section = s.section
 
         if s.short and s.const is not None:
-            group.add_argument(  # type: ignore
+            group.add_argument(  # type: ignore  # needed by pyright
                 s.short,
                 metavar="",
                 dest=s.dest,
@@ -4621,7 +4621,7 @@ def create_argument_parser(chdir: bool = True) -> argparse.ArgumentParser:
         for long in [s.long, *s.compat_longs]:
             opts = [s.short, long] if s.short and long == s.long and s.const is None else [long]
 
-            group.add_argument(  # type: ignore
+            group.add_argument(  # type: ignore  # needed by pyright
                 *opts,
                 dest=s.dest,
                 choices=s.choices,
@@ -4820,13 +4820,13 @@ class ParseContext:
             # so we ignore the return-value error for it.
             if isinstance(v, list):
                 assert isinstance(cfg_value, type(v))
-                return cfg_value + v  # type: ignore[return-value]
+                return cfg_value + v  # type: ignore[return-value]  # needed by mypy
             elif isinstance(v, dict):
                 assert isinstance(cfg_value, type(v))
-                return cfg_value | v  # type: ignore[return-value]
+                return cfg_value | v  # type: ignore[return-value]  # needed by mypy
             elif isinstance(v, set):
                 assert isinstance(cfg_value, type(v))
-                return cfg_value | v  # type: ignore[return-value]
+                return cfg_value | v  # type: ignore[return-value]  # needed by mypy
             else:
                 return v
 
