@@ -1911,9 +1911,9 @@ class Args:
         j: dict[str, Any]
         if isinstance(s, str):
             j = json.loads(s)
-        elif isinstance(s, dict):
+        elif isinstance(s, dict) and not hasattr(s, "read"):
             j = s
-        elif hasattr(s, "read"):
+        elif hasattr(s, "read") and not isinstance(s, dict):
             j = json.load(s)
         else:
             raise ValueError(
@@ -2487,9 +2487,9 @@ class Config:
         j: dict[str, Any]
         if isinstance(s, str):
             j = json.loads(s)
-        elif isinstance(s, dict):
+        elif isinstance(s, dict) and not hasattr(s, "read"):
             j = s
-        elif hasattr(s, "read"):
+        elif hasattr(s, "read") and not isinstance(s, dict):
             j = json.load(s)
         else:
             raise ValueError(
