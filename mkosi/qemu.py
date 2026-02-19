@@ -39,6 +39,7 @@ from mkosi.config import (
     Network,
     OutputFormat,
     Ssh,
+    Verb,
     VsockCID,
     finalize_term,
     format_bytes,
@@ -779,26 +780,11 @@ def finalize_state(config: Config, cid: int) -> Iterator[None]:
             p.unlink(missing_ok=True)
 
 
-def finalize_kernel_command_line_extra(config: Config) -> list[str]:
-    columns, lines = shutil.get_terminal_size()
-    term = finalize_term()
-
+def finalize_kernel_command_line_extra(args: Args, config: Config) -> list[str]:
     cmdline = [
-        "rw",
         # Make sure we set up networking in the VM/container.
         "systemd.wants=network.target",
-        # Make sure we don't load vmw_vmci which messes with virtio vsock.
-        "module_blacklist=vmw_vmci",
-        f"systemd.tty.term.hvc0={term}",
-        f"systemd.tty.columns.hvc0={columns}",
-        f"systemd.tty.rows.hvc0={lines}",
     ]
-
-    if not any(s.startswith("ip=") for s in config.kernel_command_line_extra):
-        cmdline += ["ip=enc0:any", "ip=enp0s1:any", "ip=enp0s2:any", "ip=host0:any", "ip=none"]
-
-    if not any(s.startswith("loglevel=") for s in config.kernel_command_line_extra):
-        cmdline += ["loglevel=4"]
 
     if not any(s.startswith("SYSTEMD_SULOGIN_FORCE=") for s in config.kernel_command_line_extra):
         cmdline += ["SYSTEMD_SULOGIN_FORCE=1"]
@@ -809,16 +795,34 @@ def finalize_kernel_command_line_extra(config: Config) -> list[str]:
     ):
         cmdline += [f"systemd.hostname={config.machine}"]
 
-    if config.console not in (ConsoleMode.gui, ConsoleMode.headless):
+    if args.verb != Verb.boot:
+        columns, lines = shutil.get_terminal_size()
+        term = finalize_term()
+
         cmdline += [
-            f"systemd.tty.term.console={term}",
-            f"systemd.tty.columns.console={columns}",
-            f"systemd.tty.rows.console={lines}",
-            "console=hvc0",
-            f"TERM={term}",
+            "rw",
+            # Make sure we don't load vmw_vmci which messes with virtio vsock.
+            "module_blacklist=vmw_vmci",
+            f"systemd.tty.term.hvc0={term}",
+            f"systemd.tty.columns.hvc0={columns}",
+            f"systemd.tty.rows.hvc0={lines}",
         ]
-    elif config.console == ConsoleMode.gui and config.architecture.is_arm_variant():
-        cmdline += ["console=tty0"]
+
+        if not any(s.startswith("ip=") for s in config.kernel_command_line_extra):
+            cmdline += ["ip=enc0:any", "ip=enp0s1:any", "ip=enp0s2:any", "ip=host0:any", "ip=none"]
+
+        if not any(s.startswith("loglevel=") for s in config.kernel_command_line_extra):
+            cmdline += ["loglevel=4"]
+
+        if config.console not in (ConsoleMode.gui, ConsoleMode.headless):
+            cmdline += [
+                f"systemd.tty.term.console={term}",
+                f"systemd.tty.columns.console={columns}",
+                f"systemd.tty.rows.console={lines}",
+                f"TERM={term}",
+            ]
+        elif config.console == ConsoleMode.gui and config.architecture.is_arm_variant():
+            cmdline += ["console=tty0"]
 
     for s in config.kernel_command_line_extra:
         key, sep, value = s.partition("=")
@@ -1184,7 +1188,7 @@ def run_qemu(args: Args, config: Config) -> None:
         if kernel:
             cmdline += ["-kernel", kernel]
 
-            if any(s.startswith("root=") for s in finalize_kernel_command_line_extra(config)):
+            if any(s.startswith("root=") for s in finalize_kernel_command_line_extra(args, config)):
                 pass
             elif config.output_format == OutputFormat.disk:
                 # We can't rely on gpt-auto-generator when direct kernel booting so synthesize a root=
@@ -1333,7 +1337,7 @@ def run_qemu(args: Args, config: Config) -> None:
             elif kernel:
                 kcl += [f"systemd.set_credential_binary={p.name}:{payload.decode()}"]
 
-        kcl += finalize_kernel_command_line_extra(config)
+        kcl += finalize_kernel_command_line_extra(args, config)
 
         if kernel and (kerneltype != KernelType.uki or not config.architecture.supports_smbios(firmware)):
             cmdline += ["-append", " ".join(config.kernel_command_line + kcl)]

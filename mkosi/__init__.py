@@ -4398,7 +4398,7 @@ def run_shell(args: Args, config: Config) -> None:
             # to pid1. Let's mimic the same behavior when we invoke nspawn as a container.
             for arg in itertools.chain(
                 config.kernel_command_line,
-                finalize_kernel_command_line_extra(config),
+                finalize_kernel_command_line_extra(args, config),
             ):
                 name, sep, value = arg.partition("=")
 
