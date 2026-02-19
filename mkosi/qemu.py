@@ -789,12 +789,6 @@ def finalize_kernel_command_line_extra(args: Args, config: Config) -> list[str]:
     if not any(s.startswith("SYSTEMD_SULOGIN_FORCE=") for s in config.kernel_command_line_extra):
         cmdline += ["SYSTEMD_SULOGIN_FORCE=1"]
 
-    if (
-        not any(s.startswith("systemd.hostname=") for s in config.kernel_command_line_extra)
-        and config.machine
-    ):
-        cmdline += [f"systemd.hostname={config.machine}"]
-
     if args.verb != Verb.boot:
         columns, lines = shutil.get_terminal_size()
         term = finalize_term()
