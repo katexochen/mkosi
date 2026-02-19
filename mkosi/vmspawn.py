@@ -112,7 +112,7 @@ def run_vmspawn(args: Args, config: Config) -> None:
         if config.forward_journal:
             cmdline += ["--forward-journal", config.forward_journal]
 
-        cmdline += [*args.cmdline, *finalize_kernel_command_line_extra(config)]
+        cmdline += [*args.cmdline, *finalize_kernel_command_line_extra(args, config)]
 
         env = os.environ.copy()
         if config.qemu_args:
